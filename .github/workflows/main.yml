@@ -19,19 +19,18 @@ jobs:
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
                              -Name "SecurityLayer" -Value 0 -Force
 
-          # Remove any existing rule with the same name
+          # Remove any existing rule
           netsh advfirewall firewall delete rule name="RDP-Tailscale"
           
-          # Allow port 3389
+          # Allow RDP port
           netsh advfirewall firewall add rule name="RDP-Tailscale" `
             dir=in action=allow protocol=TCP localport=3389
 
-          # Restart RDP service
           Restart-Service -Name TermService -Force
 
-      - name: Create RDP User with Hardcoded Password
+      - name: Create RDP User with Complex Password
         run: |
-          $password = "hamza123"
+          $password = "Hamza123!"
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
           
           # Create user
@@ -39,7 +38,7 @@ jobs:
           Add-LocalGroupMember -Group "Administrators" -Member "RDP"
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member "RDP"
 
-          # Save creds to env
+          # Persist credentials
           echo "RDP_CREDS=User: RDP | Password: $password" >> $env:GITHUB_ENV
           
           if (-not (Get-LocalUser -Name "RDP")) {
@@ -60,7 +59,6 @@ jobs:
         run: |
           & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-runner-$env:GITHUB_RUN_ID
           
-          # Wait for Tailscale IP
           $tsIP = $null
           $retries = 0
           while (-not $tsIP -and $retries -lt 10) {
@@ -70,7 +68,7 @@ jobs:
           }
           
           if (-not $tsIP) {
-              Write-Error "Tailscale IP not assigned. Exiting."
+              Write-Error "Tailscale IP not assigned"
               exit 1
           }
 
@@ -85,17 +83,17 @@ jobs:
               Write-Error "TCP connection to RDP port 3389 failed"
               exit 1
           }
-          Write-Host "TCP connectivity successful!"
+          Write-Host "TCP connectivity successful"
 
       - name: Maintain Connection
         run: |
           Write-Host "`n=== RDP ACCESS ==="
           Write-Host "Address: $env:TAILSCALE_IP"
           Write-Host "Username: RDP"
-          Write-Host "Password: hamza123"
+          Write-Host "Password: Hamza123!"
           Write-Host "==================`n"
           
           while ($true) {
-              Write-Host "[$(Get-Date)] RDP Active, To stop terminate workflow"
+              Write-Host "[$(Get-Date)] RDP Active"
               Start-Sleep -Seconds 300
           }
